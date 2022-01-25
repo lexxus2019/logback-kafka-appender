@@ -12,6 +12,7 @@ import ch.qos.logback.core.status.Status;
 import ch.qos.logback.core.status.StatusListener;
 import com.github.danielwegener.logback.kafka.delivery.AsynchronousDeliveryStrategy;
 import com.github.danielwegener.logback.kafka.keying.NoKeyKeyingStrategy;
+import com.github.danielwegener.logback.kafka.producers.LazyProducerImpl;
 import com.github.danielwegener.logback.kafka.util.TestKafka;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -85,14 +86,14 @@ public class KafkaAppenderIT {
         unit.setName("TestKafkaAppender");
         unit.setContext(loggerContext);
         unit.setKeyingStrategy(new NoKeyKeyingStrategy());
-        unit.setDeliveryStrategy(new AsynchronousDeliveryStrategy());
+        unit.setInternalProducer(new LazyProducerImpl());
         unit.addAppender(fallbackAppender);
         unit.addProducerConfigValue(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBrokerList());
         unit.addProducerConfigValue(ProducerConfig.ACKS_CONFIG, "1");
         unit.addProducerConfigValue(ProducerConfig.MAX_BLOCK_MS_CONFIG, "2000");
         unit.addProducerConfigValue(ProducerConfig.LINGER_MS_CONFIG, "100");
         unit.setPartition(0);
-        unit.setDeliveryStrategy(new AsynchronousDeliveryStrategy());
+        unit.setInternalProducer(new LazyProducerImpl());
         unit.addAppender(new AppenderBase<ILoggingEvent>() {
             @Override
             protected void append(ILoggingEvent eventObject) {

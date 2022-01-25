@@ -3,10 +3,10 @@ package com.github.danielwegener.logback.kafka;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import ch.qos.logback.core.encoder.Encoder;
 import ch.qos.logback.core.spi.AppenderAttachable;
-import com.github.danielwegener.logback.kafka.delivery.AsynchronousDeliveryStrategy;
-import com.github.danielwegener.logback.kafka.delivery.DeliveryStrategy;
 import com.github.danielwegener.logback.kafka.keying.KeyingStrategy;
 import com.github.danielwegener.logback.kafka.keying.NoKeyKeyingStrategy;
+import com.github.danielwegener.logback.kafka.producers.KafkaInternalProducer;
+import com.github.danielwegener.logback.kafka.producers.ReactorProducerImpl;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,13 +22,15 @@ public abstract class KafkaAppenderConfig<E> extends UnsynchronizedAppenderBase<
 
     protected Encoder<E> encoder = null;
     protected KeyingStrategy<? super E> keyingStrategy = null;
-    protected DeliveryStrategy deliveryStrategy;
+   //// protected DeliveryStrategy deliveryStrategy;
 
     protected Integer partition = null;
 
     protected boolean appendTimestamp = true;
 
     protected Map<String,Object> producerConfig = new HashMap<String, Object>();
+
+    protected KafkaInternalProducer<E> internalProducer = null;
 
     protected boolean checkPrerequisites() {
         boolean errorFree = true;
@@ -54,9 +56,9 @@ public abstract class KafkaAppenderConfig<E> extends UnsynchronizedAppenderBase<
             keyingStrategy = new NoKeyKeyingStrategy();
         }
 
-        if (deliveryStrategy == null) {
-            addInfo("No explicit deliveryStrategy set for the appender named [\""+name+"\"]. Using default asynchronous strategy.");
-            deliveryStrategy = new AsynchronousDeliveryStrategy();
+        if (internalProducer == null) {
+            addInfo("No explicit keyingStrategy set for the appender named [\"" + name + "\"]. Using default NoKeyKeyingStrategy.");
+            internalProducer = new ReactorProducerImpl<E>();
         }
 
         return errorFree;
@@ -88,8 +90,8 @@ public abstract class KafkaAppenderConfig<E> extends UnsynchronizedAppenderBase<
         return producerConfig;
     }
 
-    public void setDeliveryStrategy(DeliveryStrategy deliveryStrategy) {
-        this.deliveryStrategy = deliveryStrategy;
+    public void setInternalProducer(KafkaInternalProducer internalProducer) {
+        this.internalProducer = internalProducer;
     }
 
     public void setPartition(Integer partition) {

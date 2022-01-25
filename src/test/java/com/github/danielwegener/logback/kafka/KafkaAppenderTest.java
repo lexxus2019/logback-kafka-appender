@@ -25,6 +25,7 @@ import ch.qos.logback.core.status.ErrorStatus;
 import com.github.danielwegener.logback.kafka.delivery.DeliveryStrategy;
 import com.github.danielwegener.logback.kafka.delivery.FailedDeliveryCallback;
 import com.github.danielwegener.logback.kafka.keying.KeyingStrategy;
+import com.github.danielwegener.logback.kafka.producers.KafkaInternalProducer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.After;
@@ -33,6 +34,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.lang.reflect.Field;
+import java.util.Map;
 
 public class KafkaAppenderTest {
 
@@ -42,7 +44,7 @@ public class KafkaAppenderTest {
     private final Encoder<ILoggingEvent> encoder =  mock(Encoder.class);
     private final KeyingStrategy<ILoggingEvent> keyingStrategy =  mock(KeyingStrategy.class);
     @SuppressWarnings("unchecked")
-    private final DeliveryStrategy deliveryStrategy =  mock(DeliveryStrategy.class);
+    private final KafkaInternalProducer kafkaInternalProducer =  mock(KafkaInternalProducer.class);
 
     @Before
     public void before() {
@@ -54,7 +56,7 @@ public class KafkaAppenderTest {
         unit.setTopic("topic");
         unit.addProducerConfig("bootstrap.servers=localhost:1234");
         unit.setKeyingStrategy(keyingStrategy);
-        unit.setDeliveryStrategy(deliveryStrategy);
+        unit.setInternalProducer(kafkaInternalProducer);
         ctx.start();
     }
 
@@ -71,7 +73,7 @@ public class KafkaAppenderTest {
         unit.stop();
         assertFalse("isStopped", unit.isStarted());
         assertThat(ctx.getStatusManager().getCopyOfStatusList(), empty());
-        verifyZeroInteractions(encoder, keyingStrategy, deliveryStrategy);
+        verifyZeroInteractions(encoder, keyingStrategy, kafkaInternalProducer);
     }
 
     @Test
@@ -107,22 +109,11 @@ public class KafkaAppenderTest {
         unit.start();
         final LoggingEvent evt = new LoggingEvent("fqcn",ctx.getLogger("logger"), Level.ALL, "message", null, new Object[0]);
         unit.append(evt);
-        verify(deliveryStrategy).send(any(KafkaProducer.class), any(ProducerRecord.class), eq(evt), any(FailedDeliveryCallback.class));
+        unit.internalProducer.setFailedDeliveryCallback(any(FailedDeliveryCallback.class));
+        unit.internalProducer.setProducerConfig(any(Map.class));
+        verify(kafkaInternalProducer).send(any(String.class), any(Integer.class), any(Long.class), any(byte[].class), any(byte[].class), eq(evt));
         verify(keyingStrategy).createKey(same(evt));
-        verify(deliveryStrategy).send(any(KafkaProducer.class), any(ProducerRecord.class), eq(evt), any(FailedDeliveryCallback.class));
-    }
-
-    @Test
-    public void testAppendUsesPreConfiguredPartition() {
-        when(encoder.encode(any(ILoggingEvent.class))).thenReturn(new byte[]{0x00, 0x00});
-        ArgumentCaptor<ProducerRecord> producerRecordCaptor = ArgumentCaptor.forClass(ProducerRecord.class);
-        unit.setPartition(1);
-        unit.start();
-        final LoggingEvent evt = new LoggingEvent("fqcn", ctx.getLogger("logger"), Level.ALL, "message", null, new Object[0]);
-        unit.append(evt);
-        verify(deliveryStrategy).send(any(KafkaProducer.class), producerRecordCaptor.capture(), eq(evt), any(FailedDeliveryCallback.class));
-        final ProducerRecord value = producerRecordCaptor.getValue();
-        assertThat(value.partition(), equalTo(1));
+        verify(kafkaInternalProducer).send(any(String.class), any(Integer.class), any(Long.class), any(byte[].class), any(byte[].class), eq(evt));
     }
 
     @Test
@@ -132,12 +123,12 @@ public class KafkaAppenderTest {
         final LoggingEvent deferredEvent = new LoggingEvent("fqcn",ctx.getLogger("org.apache.kafka.clients.logger"), Level.ALL, "deferred message", null, new Object[0]);
         unit.doAppend(deferredEvent);
 
-        verify(deliveryStrategy, never()).send(any(KafkaProducer.class), any(ProducerRecord.class), eq(deferredEvent), any(FailedDeliveryCallback.class));
+        verify(kafkaInternalProducer).send(any(String.class), any(Integer.class), any(Long.class), any(byte[].class), any(byte[].class), eq(deferredEvent));
 
         final LoggingEvent evt = new LoggingEvent("fqcn",ctx.getLogger("logger"), Level.ALL, "message", null, new Object[0]);
         unit.doAppend(evt);
-        verify(deliveryStrategy).send(any(KafkaProducer.class), any(ProducerRecord.class), eq(deferredEvent), any(FailedDeliveryCallback.class));
-        verify(deliveryStrategy).send(any(KafkaProducer.class), any(ProducerRecord.class), eq(evt), any(FailedDeliveryCallback.class));
+        verify(kafkaInternalProducer).send(any(String.class), any(Integer.class), any(Long.class), any(byte[].class), any(byte[].class), eq(deferredEvent));
+        verify(kafkaInternalProducer).send(any(String.class), any(Integer.class), any(Long.class), any(byte[].class), any(byte[].class), eq(evt));
     }
 
     @Test
