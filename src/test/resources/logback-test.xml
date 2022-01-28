@@ -1,15 +1,15 @@
 <configuration>
 
-   <appender name="KafkaAppender" class="com.github.danielwegener.logback.kafka.KafkaAppender">
+   <appender name="KafkaAppender" class="ru.krista.fm.logbackkafkaappender.KafkaAppender">
        <encoder>
            <pattern>%msg</pattern>
        </encoder>
 
         <topic>logs</topic>
-        <keyingStrategy class="com.github.danielwegener.logback.kafka.keying.HostNameKeyingStrategy" />
-        <deliveryStrategy class="com.github.danielwegener.logback.kafka.delivery.AsynchronousDeliveryStrategy" />
+        <keyingStrategy class="ru.krista.fm.logbackkafkaappender.keying.HostNameKeyingStrategy" />
+        <deliveryStrategy class="ru.krista.fm.logbackkafkaappender.delivery.AsynchronousDeliveryStrategy" />
 
-        <producerConfig>bootstrap.servers=localhost:9092</producerConfig>
+        <producerConfig>bootstrap.servers=localhost:9093</producerConfig>
     </appender>
     <logger name="LogbackIntegrationIT" additivity="false" level="info">
         <appender-ref ref="KafkaAppender"/>
